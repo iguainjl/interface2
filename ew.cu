@@ -168,13 +168,16 @@ class cuerda{
         thrust::fill(u.begin(),u.end(),real(0.0));
     }
 
-    // needed to reach steady state noise	
+    ///////////// needed to reach steady state noise	
+    //just start noise (one step)
+
     void warmup_noise(){
         real dt_ = dt;
         unsigned long seed_ = seed;
         unsigned long L_ = L;
         
-        unsigned long twarm = (unsigned long )(100.*TAU/dt_); // number of warmup steps
+    //unsigned long twarm = (unsigned long )(100.*TAU/dt_); // number of warmup steps
+    unsigned long twarm = (unsigned long )(1); // one step
         for(unsigned long n=0;n<twarm;n++)
         {
             thrust::for_each(
@@ -189,8 +192,10 @@ class cuerda{
                     unsigned long i=thrust::get<1>(t);
                     curandStatePhilox4_32_10_t state;
                     curand_init(seed_, i, n, &state);
-                    real ran = sqrtf(2*TEMP*dt_)*curand_normal(&state);
-                    thrust::get<0>(t) += -thrust::get<0>(t)*dt_/TAU + ran/TAU;
+                    //real ran = sqrtf(2*TEMP*dt_)*curand_normal(&state);
+                    //thrust::get<0>(t) += -thrust::get<0>(t)*dt_/TAU + ran/TAU;
+                    real ran = sqrtf(TEMP/TAU)*curand_normal(&state);
+                    thrust::get<0>(t) = ran;
                 } 
             );  
         }
@@ -353,10 +358,11 @@ class cuerda{
                 // correlated noise update 
                 curandStatePhilox4_32_10_t state;
                 curand_init(seed_, i, n, &state);
-                real ran = sqrt(2*TEMP*dt_)*curand_normal(&state);
-                raw_noise[i] += -raw_noise[i]*dt_/TAU + ran/TAU;
-                                        
-                //real lap_u = (uright + uleft - 2.0*raw_u[i]);
+                //real ran = sqrt(2*TEMP*dt_)*curand_normal(&state);
+                //raw_noise[i] += -raw_noise[i]*dt_/TAU + ran/TAU;
+                real ran = sqrt(TEMP*(1-1/exp(2*dt_/TAU))/TAU)*curand_normal(&state);
+                raw_noise[i] = raw_noise[i]/exp(dt_/TAU) + ran;                        
+                real lap_u = (uright + uleft - 2.0*raw_u[i]);
 
                 // modify element force
                 thrust::get<0>(t) = raw_noise[i];
